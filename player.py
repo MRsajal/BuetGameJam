@@ -13,9 +13,16 @@ class Player:
         self.frame_timer = 0
         self.frame_delay = 10
 
+        # --- FIX: Handle capitalization differences (idle vs Idle) ---
+        # Check if the uppercase "Idle" folder exists (Sniper/MachineGunner)
+        # Otherwise default to lowercase "idle" (Assault)
+        idle_folder_name = "idle"
+        if os.path.exists(os.path.join(sprite_root, "Idle")):
+            idle_folder_name = "Idle"
+
         self.animations = {
-            "idle_left": self.load_images(os.path.join(sprite_root, "idle", "left")),
-            "idle_right": self.load_images(os.path.join(sprite_root, "idle", "right")),
+            "idle_left": self.load_images(os.path.join(sprite_root, idle_folder_name, "left")),
+            "idle_right": self.load_images(os.path.join(sprite_root, idle_folder_name, "right")),
             "walk_left": self.load_images(os.path.join(sprite_root, "walk", "left")),
             "walk_right": self.load_images(os.path.join(sprite_root, "walk", "right")),
             "death_left": self.load_images(os.path.join(sprite_root, "death", "left")),
@@ -36,11 +43,16 @@ class Player:
             path = os.path.join(folder, f"{i}.png")
             if not os.path.exists(path):
                 break
-            img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.scale(img, (self.size, self.size))
-            images.append(img)
+            try:
+                img = pygame.image.load(path).convert_alpha()
+                img = pygame.transform.scale(img, (self.size, self.size))
+                images.append(img)
+            except Exception as e:
+                print(f"Error loading {path}: {e}")
             i += 1
+            
         if not images:
+            # Create a fallback image if folder is empty or missing
             img = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
             img.fill((255, 0, 255))
             images.append(img)

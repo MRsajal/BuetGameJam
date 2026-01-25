@@ -42,20 +42,27 @@ while running:
             action_name, settings = action
             if action_name == "START_GAME":
                 loadout = settings["loadout"]
+                # --- UPDATED: Passing the class name to the Game ---
                 game = Game(
                     screen,
                     SCREEN_WIDTH,
                     SCREEN_HEIGHT,
+                    player_class=loadout["class"],  # This is the key change
                     player_speed=loadout["player_speed"],
                     player_hp=loadout["player_hp"],
                     enemy_count=loadout["enemy_count"],
                     damage_to_enemy=loadout["damage_to_enemy"],
+                    #music_enabled=settings["music_enabled"]
                 )
                 app_state = "PLAYING"
 
     elif app_state == "PLAYING" and game is not None:
         game.update(keys, now_ms, mouse_pos)
         game.draw()
+
+        if game.return_to_menu:
+            game = None
+            app_state = "MENU"
 
     pygame.display.flip()
     clock.tick(FPS)

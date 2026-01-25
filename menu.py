@@ -46,11 +46,20 @@ class Menu:
                       pygame.image.load("menu/start/speed/2.png").convert_alpha()],
             "guard": [pygame.image.load("menu/start/guard/1.png").convert_alpha(),
                       pygame.image.load("menu/start/guard/2.png").convert_alpha()],
-            # Reuse the "option" button art as a temporary High Damage button if no dedicated art exists.
-            # If you add real art later, change these paths.
             "damage": [pygame.image.load("menu/option/1.png").convert_alpha(),
                        pygame.image.load("menu/option/2.png").convert_alpha()],
         }
+
+        # --- LOAD CHARACTER AVATARS FOR MENU ---
+        self.avatars = {
+            "speed": self.load_frames(os.path.join("Assault_Class", "idle", "right")),
+            "guard": self.load_frames(os.path.join("MachineGunner_Class", "Idle", "right")),
+            "damage": self.load_frames(os.path.join("Sniper_Class", "Idle", "right"))
+        }
+        
+        # Animation State
+        self.avatar_frame_index = 0
+        self.avatar_timer = 0
 
         # Fonts
         self.menu_title_font = pygame.font.SysFont("Arial", 48, bold=True)
@@ -60,6 +69,24 @@ class Menu:
 
         # One-tap guard so click doesn't trigger multiple times
         self._prev_mouse_down = False
+
+    def load_frames(self, path):
+        """Helper to load animation frames from a folder."""
+        frames = []
+        i = 0
+        while True:
+            full_path = os.path.join(path, f"{i}.png")
+            if not os.path.exists(full_path):
+                break
+            try:
+                img = pygame.image.load(full_path).convert_alpha()
+                # Scale up to look good in the menu (3x size = 96x96 since base is 32x32)
+                img = pygame.transform.scale(img, (96, 96))
+                frames.append(img)
+            except Exception as e:
+                print(f"Error loading {full_path}: {e}")
+            i += 1
+        return frames
 
     def _consume_click(self) -> bool:
         """Return True only on mouse down edge."""
@@ -168,6 +195,12 @@ class Menu:
     def _draw_start_menu(self):
         self.screen.blit(self.menu_bg, (0, 0))
 
+        # --- UPDATE ANIMATION ---
+        self.avatar_timer += 1
+        if self.avatar_timer >= 10:  # Adjust speed: Lower = Faster
+            self.avatar_timer = 0
+            self.avatar_frame_index += 1
+
         mouse = pygame.mouse.get_pos()
         clicked = self._consume_click()
 
@@ -177,30 +210,65 @@ class Menu:
         # Layout
         btn_x = 50
         stat_x = btn_x + 540
+        avatar_x = stat_x - 120  # Draw avatar to the left of the stats
+        
         y1 = self.SCREEN_HEIGHT // 2 - 170
         y2 = self.SCREEN_HEIGHT // 2 - 20
         y3 = self.SCREEN_HEIGHT // 2 + 130
 
         stats_font = pygame.font.SysFont("Arial", 22, bold=True)
+        # Font for Class Names (Reduced slightly to fit under avatars if needed)
+        class_name_font = pygame.font.SysFont("Arial", 32, bold=True)
 
-        # Option 1: Speed
+        # Helper to draw the avatar
+        def draw_avatar(key, y_pos):
+            frames = self.avatars.get(key, [])
+            if frames:
+                # Cycle frames safely
+                frame = frames[self.avatar_frame_index % len(frames)]
+                # Center vertically relative to the button/text area
+                self.screen.blit(frame, (avatar_x, y_pos - 10))
+
+        # --- Option 1: Speed (Assault) ---
+        draw_avatar("speed", y1)
         if self.draw_menu_button("speed", btn_x, y1, mouse) and clicked:
             self.selected_loadout = "speed"
             return "START_GAME"
+
+        # Draw "SPEEDY" under avatar
+        lbl_1 = class_name_font.render("SPEEDY", True, (255, 255, 255))
+        # Center text under the 96px avatar
+        text_x_1 = avatar_x + (96 - lbl_1.get_width()) // 2
+        self.screen.blit(lbl_1, (text_x_1, y1 + 90))
+
         s1 = stats_font.render("SPD 5 | HP 12 | ENEMIES 5 | DMG 1", True, (255, 255, 255))
         self.screen.blit(s1, (stat_x, y1 + 65))
 
-        # Option 2: Guard
+        # --- Option 2: Guard (MachineGunner/Heavy) ---
+        draw_avatar("guard", y2)
         if self.draw_menu_button("guard", btn_x, y2, mouse) and clicked:
             self.selected_loadout = "guard"
             return "START_GAME"
+        
+        # Draw "THE ROCK" under avatar
+        lbl_2 = class_name_font.render("THE ROCK", True, (255, 255, 255))
+        text_x_2 = avatar_x + (96 - lbl_2.get_width()) // 2
+        self.screen.blit(lbl_2, (text_x_2, y2 + 90))
+
         s2 = stats_font.render("SPD 3 | HP 15 | ENEMIES 7 | DMG 1", True, (255, 255, 255))
         self.screen.blit(s2, (stat_x, y2 + 65))
 
-        # Option 3: High Damage
+        # --- Option 3: High Damage (Sniper) ---
+        draw_avatar("damage", y3)
         if self.draw_menu_button("damage", btn_x, y3, mouse) and clicked:
             self.selected_loadout = "damage"
             return "START_GAME"
+        
+        # Draw "ONE SHOT" under avatar
+        lbl_3 = class_name_font.render("ONE SHOT", True, (255, 255, 255))
+        text_x_3 = avatar_x + (96 - lbl_3.get_width()) // 2
+        self.screen.blit(lbl_3, (text_x_3, y3 + 90))
+
         s3 = stats_font.render("SPD 4 | HP 10 | ENEMIES 6 | DMG 2", True, (255, 255, 255))
         self.screen.blit(s3, (stat_x, y3 + 65))
 
@@ -240,15 +308,34 @@ class Menu:
             action = self._draw_start_menu()
             if action == "START_GAME":
                 # Loadout rules:
-                # 1) Speed:     speed=5, hp=12, enemy=5, dmg_to_enemy=1
-                # 2) Guard:     speed=3, hp=15, enemy=7, dmg_to_enemy=1
-                # 3) HighDamage speed=4, hp=10, enemy=6, dmg_to_enemy=2
+                # 1) Speed:     Assault_Class, speed=5, hp=12, enemy=5, dmg_to_enemy=1
+                # 2) Guard:     MachineGunner_Class, speed=3, hp=15, enemy=7, dmg_to_enemy=1
+                # 3) HighDamage Sniper_Class, speed=4, hp=10, enemy=6, dmg_to_enemy=2
+                
                 if self.selected_loadout == "speed":
-                    loadout = {"player_speed": 5, "player_hp": 12, "enemy_count": 5, "damage_to_enemy": 1}
+                    loadout = {
+                        "class": "Assault_Class", 
+                        "player_speed": 5, 
+                        "player_hp": 12, 
+                        "enemy_count": 5, 
+                        "damage_to_enemy": 1
+                    }
                 elif self.selected_loadout == "guard":
-                    loadout = {"player_speed": 3, "player_hp": 15, "enemy_count": 7, "damage_to_enemy": 1}
+                    loadout = {
+                        "class": "MachineGunner_Class", 
+                        "player_speed": 3, 
+                        "player_hp": 15, 
+                        "enemy_count": 7, 
+                        "damage_to_enemy": 1
+                    }
                 else:
-                    loadout = {"player_speed": 4, "player_hp": 10, "enemy_count": 6, "damage_to_enemy": 2}
+                    loadout = {
+                        "class": "Sniper_Class", 
+                        "player_speed": 4, 
+                        "player_hp": 10, 
+                        "enemy_count": 6, 
+                        "damage_to_enemy": 2
+                    }
 
                 settings = {
                     "music_enabled": self.music_enabled,
