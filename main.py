@@ -6,6 +6,7 @@ from game import Game
 
 
 pygame.init()
+pygame.mixer.init()
 
 # -------------------- SCREEN --------------------
 SCREEN_WIDTH, SCREEN_HEIGHT = 1040, 672
@@ -19,6 +20,19 @@ FPS = 60
 app_state = "MENU"
 
 menu = Menu(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
+
+def _start_bg_music():
+    try:
+        pygame.mixer.music.load("music2.mp3")
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
+    except Exception:
+        # If audio device missing or file can't load, just skip music.
+        pass
+
+# Start music initially (menu toggle can later stop it)
+_start_bg_music()
+
 game: Game | None = None
 
 running = True
@@ -38,27 +52,46 @@ while running:
 
     if app_state == "MENU":
         action = menu.update_and_draw()
+
+        # Apply music toggle live
+        try:
+            if menu.music_enabled:
+                if not pygame.mixer.music.get_busy():
+                    _start_bg_music()
+            else:
+                pygame.mixer.music.stop()
+        except Exception:
+            pass
+
         if action is not None:
             action_name, settings = action
             if action_name == "START_GAME":
                 loadout = settings["loadout"]
-                # --- UPDATED: Passing the class name to the Game ---
                 game = Game(
                     screen,
                     SCREEN_WIDTH,
                     SCREEN_HEIGHT,
-                    player_class=loadout["class"],  # This is the key change
+                    player_class=loadout["class"],
                     player_speed=loadout["player_speed"],
                     player_hp=loadout["player_hp"],
                     enemy_count=loadout["enemy_count"],
                     damage_to_enemy=loadout["damage_to_enemy"],
-                    #music_enabled=settings["music_enabled"]
                 )
                 app_state = "PLAYING"
 
     elif app_state == "PLAYING" and game is not None:
         game.update(keys, now_ms, mouse_pos)
         game.draw()
+
+        # keep applying music toggle in-game too
+        try:
+            if menu.music_enabled:
+                if not pygame.mixer.music.get_busy():
+                    _start_bg_music()
+            else:
+                pygame.mixer.music.stop()
+        except Exception:
+            pass
 
         if game.return_to_menu:
             game = None

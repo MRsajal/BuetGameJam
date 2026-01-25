@@ -44,7 +44,7 @@ class Game:
         self.MAP_TILES_X, self.MAP_TILES_Y = 65, 42
         self.MAP_WIDTH = self.MAP_TILES_X * self.SCALED_TILE_SIZE
         self.MAP_HEIGHT = self.MAP_TILES_Y * self.SCALED_TILE_SIZE
-        self.map_img = pygame.image.load("map.png").convert()
+        self.map_img = pygame.image.load("map1.png").convert()
         self.map_img = pygame.transform.scale(self.map_img, (self.MAP_WIDTH, self.MAP_HEIGHT))
         self.map_x, self.map_y = 0, 0
 
@@ -104,6 +104,18 @@ class Game:
         self.last_blood_shot_time = -15000
         self.BLOOD_SHOT_COOLDOWN = 15000
         self.shadow_clone = None
+        self.shadow_clone_spawn_time = 0
+        self.SHADOW_CLONE_LIFETIME_MS = 8000  # clone lasts 8 seconds
+
+        # Survival time
+        self.start_time_ms = pygame.time.get_ticks()
+        self.survival_time_ms = 0
+
+        # Upper layer (drawn above player)
+        self.upper_img = None
+        if os.path.exists("upper.png"):
+            self.upper_img = pygame.image.load("upper.png").convert_alpha()
+            self.upper_img = pygame.transform.scale(self.upper_img, (self.MAP_WIDTH, self.MAP_HEIGHT))
 
     def reset(self):
         self.map_x, self.map_y = 0, 0
@@ -114,6 +126,7 @@ class Game:
         self.player.max_hp = self.starting_hp
         self.player.hp = self.starting_hp
         self.shadow_clone = None 
+        self.shadow_clone_spawn_time = 0
 
         self.enemy_list = [Enemy(self.MAP_WIDTH, self.MAP_HEIGHT, self.PLAYER_SIZE, "Scarab") for _ in range(self.enemy_count)]
         self.kills = 0
@@ -126,6 +139,10 @@ class Game:
         self.fire_group.empty()
         self.item_group.empty()
         self.last_blood_shot_time = -self.BLOOD_SHOT_COOLDOWN
+
+        # Survival time
+        self.start_time_ms = pygame.time.get_ticks()
+        self.survival_time_ms = 0
 
     def get_player_world_rect(self) -> pygame.Rect:
         r = self.player.rect.copy()
@@ -205,6 +222,15 @@ class Game:
                 self.screen.blit(img, (digits_x, y - 2))
                 digits_x += img.get_width() + 2
 
+        # Survival time (top center under level)
+        now_ms = pygame.time.get_ticks()
+        if not self.GAME_OVER:
+            self.survival_time_ms = max(0, now_ms - self.start_time_ms)
+        secs = self.survival_time_ms // 1000
+        time_surf = self.ui_font.render(f"TIME: {secs}s", True, (200, 255, 255))
+        tx = self.SCREEN_WIDTH // 2 - time_surf.get_width() // 2
+        self.screen.blit(time_surf, (tx, 34))
+
     def draw_item0_count(self):
         pad = 12
         x, y = self.SCREEN_WIDTH - pad - 160, pad + 76
@@ -259,6 +285,11 @@ class Game:
         ty = (self.SCREEN_HEIGHT - title.get_height()) // 2 - 20
         self.screen.blit(title, (tx, ty))
         self.screen.blit(hint, ((self.SCREEN_WIDTH - hint.get_width()) // 2, ty + 90))
+
+        # Show survival time
+        secs = self.survival_time_ms // 1000
+        t_surf = self.game_over_hint_font.render(f"Survived: {secs}s", True, (200, 255, 255))
+        self.screen.blit(t_surf, ((self.SCREEN_WIDTH - t_surf.get_width()) // 2, ty + 130))
 
     def draw_pause_overlay(self):
         overlay = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -320,8 +351,13 @@ class Game:
             if self.player.hp > 1:
                 self.player.hp = max(1, self.player.hp // 2)
                 self.shadow_clone = Player(self.player.rect.x, self.player.rect.y, self.PLAYER_SIZE, self.player_class)
+                self.shadow_clone_spawn_time = now_ms
                 for anim_name, frames in self.shadow_clone.animations.items():
                     for img in frames: img.set_alpha(150)
+
+        # Timed clone vanish
+        if self.shadow_clone is not None and (now_ms - self.shadow_clone_spawn_time) >= self.SHADOW_CLONE_LIFETIME_MS:
+            self.shadow_clone = None
 
         # --- CLONE UPDATE & SNAP ---
         if self.shadow_clone:
@@ -383,6 +419,8 @@ class Game:
 
         if self.player.hp <= 0:
             self.GAME_OVER = True
+            # Freeze final time
+            self.survival_time_ms = max(0, now_ms - self.start_time_ms)
 
     def draw(self):
         self.screen.fill((0, 0, 0))
@@ -393,6 +431,10 @@ class Game:
         
         self.player.draw(self.screen)
         if self.shadow_clone: self.shadow_clone.draw(self.screen)
+        
+        # Draw upper layer AFTER entities so it appears above the player
+        if self.upper_img is not None:
+            self.screen.blit(self.upper_img, (self.map_x, self.map_y))
         
         for fire in self.fire_group:
             self.screen.blit(fire.image, (fire.rect.x + self.map_x, fire.rect.y + self.map_y))

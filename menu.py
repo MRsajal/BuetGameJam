@@ -208,69 +208,61 @@ class Menu:
         self.screen.blit(title, (self.SCREEN_WIDTH // 2 - title.get_width() // 2, 50))
 
         # Layout
-        btn_x = 50
-        stat_x = btn_x + 540
-        avatar_x = stat_x - 120  # Draw avatar to the left of the stats
-        
-        y1 = self.SCREEN_HEIGHT // 2 - 170
+        left_x = 120
+        avatar_x = left_x
+        text_x = avatar_x + 120
+
+        y1 = self.SCREEN_HEIGHT // 2 - 160
         y2 = self.SCREEN_HEIGHT // 2 - 20
-        y3 = self.SCREEN_HEIGHT // 2 + 130
+        y3 = self.SCREEN_HEIGHT // 2 + 120
 
         stats_font = pygame.font.SysFont("Arial", 22, bold=True)
-        # Font for Class Names (Reduced slightly to fit under avatars if needed)
-        class_name_font = pygame.font.SysFont("Arial", 32, bold=True)
+        class_name_font = pygame.font.SysFont("Arial", 42, bold=True)
 
         # Helper to draw the avatar
         def draw_avatar(key, y_pos):
             frames = self.avatars.get(key, [])
             if frames:
-                # Cycle frames safely
                 frame = frames[self.avatar_frame_index % len(frames)]
-                # Center vertically relative to the button/text area
-                self.screen.blit(frame, (avatar_x, y_pos - 10))
+                self.screen.blit(frame, (avatar_x, y_pos - 20))
 
-        # --- Option 1: Speed (Assault) ---
+        # Helper: draw text button
+        def text_button(label: str, y_pos: int) -> bool:
+            txt = class_name_font.render(label, True, (255, 255, 255))
+            rect = txt.get_rect(topleft=(text_x, y_pos))
+
+            # hover highlight
+            if rect.collidepoint(mouse):
+                pygame.draw.rect(self.screen, (255, 255, 255), rect.inflate(20, 14), 2)
+                if clicked:
+                    return True
+
+            self.screen.blit(txt, rect.topleft)
+            return False
+
+        # --- Option 1: SPEEDY (Assault) ---
         draw_avatar("speed", y1)
-        if self.draw_menu_button("speed", btn_x, y1, mouse) and clicked:
+        if text_button("SPEEDY", y1):
             self.selected_loadout = "speed"
             return "START_GAME"
-
-        # Draw "SPEEDY" under avatar
-        lbl_1 = class_name_font.render("SPEEDY", True, (255, 255, 255))
-        # Center text under the 96px avatar
-        text_x_1 = avatar_x + (96 - lbl_1.get_width()) // 2
-        self.screen.blit(lbl_1, (text_x_1, y1 + 90))
-
         s1 = stats_font.render("SPD 5 | HP 12 | ENEMIES 5 | DMG 1", True, (255, 255, 255))
-        self.screen.blit(s1, (stat_x, y1 + 65))
+        self.screen.blit(s1, (text_x, y1 + 55))
 
-        # --- Option 2: Guard (MachineGunner/Heavy) ---
+        # --- Option 2: THE ROCK (MachineGunner) ---
         draw_avatar("guard", y2)
-        if self.draw_menu_button("guard", btn_x, y2, mouse) and clicked:
+        if text_button("THE ROCK", y2):
             self.selected_loadout = "guard"
             return "START_GAME"
-        
-        # Draw "THE ROCK" under avatar
-        lbl_2 = class_name_font.render("THE ROCK", True, (255, 255, 255))
-        text_x_2 = avatar_x + (96 - lbl_2.get_width()) // 2
-        self.screen.blit(lbl_2, (text_x_2, y2 + 90))
-
         s2 = stats_font.render("SPD 3 | HP 15 | ENEMIES 7 | DMG 1", True, (255, 255, 255))
-        self.screen.blit(s2, (stat_x, y2 + 65))
+        self.screen.blit(s2, (text_x, y2 + 55))
 
-        # --- Option 3: High Damage (Sniper) ---
+        # --- Option 3: ONE SHOT (Sniper) ---
         draw_avatar("damage", y3)
-        if self.draw_menu_button("damage", btn_x, y3, mouse) and clicked:
+        if text_button("ONE SHOT", y3):
             self.selected_loadout = "damage"
             return "START_GAME"
-        
-        # Draw "ONE SHOT" under avatar
-        lbl_3 = class_name_font.render("ONE SHOT", True, (255, 255, 255))
-        text_x_3 = avatar_x + (96 - lbl_3.get_width()) // 2
-        self.screen.blit(lbl_3, (text_x_3, y3 + 90))
-
         s3 = stats_font.render("SPD 4 | HP 10 | ENEMIES 6 | DMG 2", True, (255, 255, 255))
-        self.screen.blit(s3, (stat_x, y3 + 65))
+        self.screen.blit(s3, (text_x, y3 + 55))
 
         hint_text = self.menu_hint_font.render("Press any key to go back", True, (200, 200, 200))
         self.screen.blit(hint_text, (self.SCREEN_WIDTH // 2 - hint_text.get_width() // 2, self.SCREEN_HEIGHT - 50))
