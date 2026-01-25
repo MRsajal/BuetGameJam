@@ -138,6 +138,14 @@ class Game:
         except Exception:
             self.fireball_shoot_sfx = None
 
+        # --- Mission system ---
+        self.mission_type = random.choice(["collect_item0", "survive", "reach_level"])
+        self.mission_completed = False
+        self.mission_complete_time_ms = 0
+        self.mission_complete_overlay_ms = 3000
+        self.mission_font = pygame.font.SysFont("Arial", 26, bold=True)
+        self.congrats_font = pygame.font.SysFont("Arial", 72, bold=True)
+
     def reset(self):
         self.map_x, self.map_y = 0, 0
         self.level = 1
@@ -164,6 +172,85 @@ class Game:
         # Survival time
         self.start_time_ms = pygame.time.get_ticks()
         self.survival_time_ms = 0
+
+        # --- Mission system ---
+        self.mission_type = random.choice(["collect_item0", "survive", "reach_level"])
+        self.mission_completed = False
+        self.mission_complete_time_ms = 0
+
+    def _mission_text(self) -> str:
+        if self.mission_type == "collect_item0":
+            return f"TASK: Collect 10 ITEM0 ({self.item0_count}/10)"
+        if self.mission_type == "survive":
+            # 10 minutes = 600 seconds
+            secs = self.survival_time_ms // 1000
+            return f"TASK: Survive 10 min ({secs}/600s)"
+        return f"TASK: Reach Level 5 (LV {self.level}/5)"
+
+    def _check_mission_complete(self, now_ms: int):
+        if self.mission_completed:
+            return
+
+        if self.mission_type == "collect_item0" and self.item0_count >= 10:
+            self.mission_completed = True
+        elif self.mission_type == "survive" and self.survival_time_ms >= 600_000:
+            self.mission_completed = True
+        elif self.mission_type == "reach_level" and self.level >= 5:
+            self.mission_completed = True
+
+        if self.mission_completed:
+            self.mission_complete_time_ms = now_ms
+
+    def draw_mission_ui(self):
+        if self.mission_completed:
+            return
+
+        # Special UI for item0 mission: show icon instead of the word ITEM0
+        if self.mission_type == "collect_item0":
+            text_left = self.mission_font.render("TASK: Collect 10", True, (255, 255, 255))
+            text_right = self.mission_font.render(f"({self.item0_count}/10)", True, (255, 255, 255))
+
+            icon = self.item0_icon
+            icon_w = icon.get_width() if icon is not None else 0
+            icon_h = icon.get_height() if icon is not None else 0
+
+            total_w = text_left.get_width() + 8 + icon_w + 8 + text_right.get_width()
+            x = self.SCREEN_WIDTH // 2 - total_w // 2
+            y = 58
+
+            bg_rect = pygame.Rect(x - 10, y - 6, total_w + 20, max(text_left.get_height(), icon_h) + 12)
+            pygame.draw.rect(self.screen, (0, 0, 0, 160), bg_rect)
+
+            self.screen.blit(text_left, (x, y))
+            x += text_left.get_width() + 8
+
+            if icon is not None:
+                self.screen.blit(icon, (x, y + (text_left.get_height() - icon_h) // 2))
+                x += icon_w + 8
+
+            self.screen.blit(text_right, (x, y))
+            return
+
+        # Default UI for other missions
+        text = self._mission_text()
+        surf = self.mission_font.render(text, True, (255, 255, 255))
+        rect = surf.get_rect(center=(self.SCREEN_WIDTH // 2, 66))
+        bg = rect.inflate(20, 10)
+        pygame.draw.rect(self.screen, (0, 0, 0, 160), bg)
+        self.screen.blit(surf, rect.topleft)
+
+    def draw_congrats_overlay(self):
+        overlay = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 190))
+        self.screen.blit(overlay, (0, 0))
+
+        title = self.congrats_font.render("CONGRATS!", True, (120, 255, 120))
+        msg = self.game_over_hint_font.render("Task completed", True, (255, 255, 255))
+        hint = self.game_over_hint_font.render("Press ENTER to return to Menu", True, (220, 220, 220))
+
+        self.screen.blit(title, ((self.SCREEN_WIDTH - title.get_width()) // 2, self.SCREEN_HEIGHT // 2 - 80))
+        self.screen.blit(msg, ((self.SCREEN_WIDTH - msg.get_width()) // 2, self.SCREEN_HEIGHT // 2 + 10))
+        self.screen.blit(hint, ((self.SCREEN_WIDTH - hint.get_width()) // 2, self.SCREEN_HEIGHT // 2 + 55))
 
     def get_player_world_rect(self) -> pygame.Rect:
         r = self.player.rect.copy()
@@ -327,6 +414,12 @@ class Game:
 
     def handle_event(self, event: pygame.event.Event):
         if event.type == pygame.KEYDOWN:
+            # If mission is completed and congrats overlay is showing
+            if self.mission_completed:
+                if event.key in (pygame.K_RETURN, pygame.K_ESCAPE, pygame.K_SPACE):
+                    self.return_to_menu = True
+                return
+
             if self.GAME_OVER:
                 if event.key == pygame.K_RETURN: self.reset()
                 elif event.key == pygame.K_ESCAPE: self.return_to_menu = True
@@ -434,6 +527,11 @@ class Game:
                     if not enemy.alive:
                         # Check Boss Death via Manager
                         if isinstance(enemy, Boss):
+                            # Guarantee: boss always drops 1x item0
+                            try:
+                                self.item_group.add(DropItem("item0", enemy.rect.centerx, enemy.rect.centery))
+                            except Exception:
+                                pass
                             self.level_manager.handle_boss_death()
                         else:
                             # Enemy died (play SFX)
@@ -452,6 +550,9 @@ class Game:
 
         self.apply_touch_damage(now_ms)
         self.collect_items()
+
+        # Mission check after collecting / leveling / time updates
+        self._check_mission_complete(now_ms)
 
         if self.player.hp <= 0:
             self.GAME_OVER = True
@@ -479,10 +580,15 @@ class Game:
         self.draw_kill_count()
         self.draw_item0_count()
         self.draw_ability_ui()
+        self.draw_mission_ui()
         
         if self.level_manager.boss_spawned and any(isinstance(e, Boss) and e.alive for e in self.enemy_list):
              warn = self.boss_font.render("BOSS FIGHT!", True, (255, 0, 0))
              self.screen.blit(warn, (self.SCREEN_WIDTH//2 - warn.get_width()//2, 100))
 
-        if self.GAME_OVER: self.draw_game_over_overlay()
-        elif self.PAUSED: self.draw_pause_overlay()
+        if self.mission_completed:
+            self.draw_congrats_overlay()
+        elif self.GAME_OVER:
+            self.draw_game_over_overlay()
+        elif self.PAUSED:
+            self.draw_pause_overlay()

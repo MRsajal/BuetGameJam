@@ -94,8 +94,18 @@ while running:
             pass
 
         if game.return_to_menu:
+            # Clear current game
             game = None
+            # Reset app state to main menu
             app_state = "MENU"
+            # Reset menu to its default view and selection
+            try:
+                menu.game_state = "MENU"
+                menu.selected_loadout = "speed"
+                menu.avatar_frame_index = 0
+                menu.avatar_timer = 0
+            except Exception:
+                pass
 
     pygame.display.flip()
     clock.tick(FPS)
