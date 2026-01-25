@@ -117,6 +117,27 @@ class Game:
             self.upper_img = pygame.image.load("upper.png").convert_alpha()
             self.upper_img = pygame.transform.scale(self.upper_img, (self.MAP_WIDTH, self.MAP_HEIGHT))
 
+        # SFX
+        self.enemy_die_sfx = None
+        try:
+            if os.path.exists("enemyDie.mp3"):
+                self.enemy_die_sfx = pygame.mixer.Sound("enemyDie.mp3")
+                self.enemy_die_sfx.set_volume(0.5)
+        except Exception:
+            self.enemy_die_sfx = None
+
+        self.fireball_shoot_sfx = None
+        try:
+            # supports either mp3 or wav; expects a file named fireballshoot.*
+            for ext in ("mp3", "wav", "ogg"):
+                p = f"fireballshoot.{ext}"
+                if os.path.exists(p):
+                    self.fireball_shoot_sfx = pygame.mixer.Sound(p)
+                    self.fireball_shoot_sfx.set_volume(0.05)
+                    break
+        except Exception:
+            self.fireball_shoot_sfx = None
+
     def reset(self):
         self.map_x, self.map_y = 0, 0
         self.level = 1
@@ -384,6 +405,14 @@ class Game:
             fx, fy = self.get_muzzle_world_pos()
             fireball = Fireball(fx, fy, self.player.facing)
             self.fire_group.add(fireball)
+
+            # Shoot SFX (once per fire interval)
+            if self.fireball_shoot_sfx is not None:
+                try:
+                    self.fireball_shoot_sfx.play()
+                except Exception:
+                    pass
+
             if self.shadow_clone:
                 cx, cy = self.get_muzzle_world_pos(self.shadow_clone)
                 c_fireball = Fireball(cx, cy, self.shadow_clone.facing)
@@ -407,6 +436,13 @@ class Game:
                         if isinstance(enemy, Boss):
                             self.level_manager.handle_boss_death()
                         else:
+                            # Enemy died (play SFX)
+                            if self.enemy_die_sfx is not None:
+                                try:
+                                    self.enemy_die_sfx.play()
+                                except Exception:
+                                    pass
+
                             self.kills += 1
                             self.maybe_spawn_drop(enemy.rect.centerx, enemy.rect.centery)
                     break

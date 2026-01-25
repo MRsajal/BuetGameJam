@@ -24,7 +24,7 @@ menu = Menu(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
 def _start_bg_music():
     try:
         pygame.mixer.music.load("music2.mp3")
-        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.set_volume(0.7)
         pygame.mixer.music.play(-1)
     except Exception:
         # If audio device missing or file can't load, just skip music.
