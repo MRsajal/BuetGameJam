@@ -193,7 +193,7 @@ class Game:
 
         if self.mission_type == "collect_item0" and self.item0_count >= 10:
             self.mission_completed = True
-        elif self.mission_type == "survive" and self.survival_time_ms >= 600_000:
+        elif self.mission_type == "survive" and self.survival_time_ms >= 300_000:
             self.mission_completed = True
         elif self.mission_type == "reach_level" and self.level >= 5:
             self.mission_completed = True

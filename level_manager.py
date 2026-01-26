@@ -19,14 +19,13 @@ class LevelManager:
 
     def spawn_boss(self):
         if self.boss_spawned: return
-        
-        # Despawn normal enemies to focus on boss
-        self.game.enemy_list.clear()
-        
+
+        # Keep existing enemies (do NOT despawn them)
+
         # Spawn Boss
         boss = Boss(self.game.MAP_WIDTH, self.game.MAP_HEIGHT, "Scarab")
         self.game.enemy_list.append(boss)
-        
+
         self.boss_spawned = True
         print("!!! BOSS SPAWNED !!!")
 
