@@ -98,12 +98,15 @@ class Enemy:
 
         step_x = self.speed * dx / dist
         step_y = self.speed * dy / dist
+
+        # Free movement (no collision)
         self.rect.x += int(round(step_x))
         self.rect.y += int(round(step_y))
 
         self.rect.x = max(0, min(self.rect.x, self.map_width - self.size))
         self.rect.y = max(0, min(self.rect.y, self.map_height - self.size))
 
+        # Animate based on intended direction to player (not just the slide)
         walk_anim = "walk_right" if dx >= 0 else "walk_left"
         self._set_animation(walk_anim)
         self.animate(loop=True)
@@ -133,12 +136,14 @@ class Enemy:
 class Boss(Enemy):
     def __init__(self, map_width, map_height, sprite_root):
         super().__init__(map_width, map_height, 96, sprite_root)
+        self.max_hp = 50
         self.respawn()
 
     def respawn(self):
         self.rect.x = random.randint(0, self.map_width - self.size)
         self.rect.y = random.randint(0, self.map_height - self.size)
-        self.hp = 50
+        self.max_hp = 50
+        self.hp = self.max_hp
         self.damage = 2
         self.alive = True
         self.current_animation = "idle_right"

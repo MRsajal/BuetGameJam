@@ -182,9 +182,9 @@ class Game:
         if self.mission_type == "collect_item0":
             return f"TASK: Collect 10 ITEM0 ({self.item0_count}/10)"
         if self.mission_type == "survive":
-            # 10 minutes = 600 seconds
+            # 5 minutes = 300 seconds
             secs = self.survival_time_ms // 1000
-            return f"TASK: Survive 10 min ({secs}/600s)"
+            return f"TASK: Survive 5 min ({secs}/300s)"
         return f"TASK: Reach Level 5 (LV {self.level}/5)"
 
     def _check_mission_complete(self, now_ms: int):
@@ -575,7 +575,24 @@ class Game:
         
         for fire in self.fire_group:
             self.screen.blit(fire.image, (fire.rect.x + self.map_x, fire.rect.y + self.map_y))
-        
+
+        # Boss health bar (only when boss is alive)
+        for enemy in self.enemy_list:
+            if isinstance(enemy, Boss) and enemy.alive:
+                bar_w = 140
+                bar_h = 12
+                x = enemy.rect.centerx + self.map_x - bar_w // 2
+                y = enemy.rect.y + self.map_y - 18
+
+                max_hp = max(1, int(getattr(enemy, "max_hp", enemy.hp)))
+                hp = max(0, int(enemy.hp))
+                fill_w = int(bar_w * (hp / max_hp))
+
+                pygame.draw.rect(self.screen, (0, 0, 0), (x - 2, y - 2, bar_w + 4, bar_h + 4))
+                pygame.draw.rect(self.screen, (140, 0, 0), (x, y, bar_w, bar_h))
+                pygame.draw.rect(self.screen, (0, 220, 0), (x, y, fill_w, bar_h))
+                break
+
         self.draw_health_bar()
         self.draw_kill_count()
         self.draw_item0_count()

@@ -1,28 +1,33 @@
 import pygame
+import random
 from enemy import Enemy, Boss
 
 class LevelManager:
     def __init__(self, game):
         self.game = game
         self.boss_spawned = False
-        self.boss_spawn_kills = 10  # Kills needed for first boss
+
+        # Hidden per-level boss timer
+        self.level_started_ms = pygame.time.get_ticks()
+        self.boss_spawn_delay_ms = 60_000  # 1 minute
 
     def reset(self):
         self.boss_spawned = False
-        self.boss_spawn_kills = 10
+        self.level_started_ms = pygame.time.get_ticks()
 
     def check_boss_spawn(self):
-        """Checks if enough kills occurred to spawn the boss."""
-        # Only spawn if boss isn't already there and we reached kill count
-        if self.game.kills >= self.boss_spawn_kills and not self.boss_spawned:
+        """Spawn boss 1 minute after the level starts (timer hidden from player)."""
+        if self.boss_spawned:
+            return
+
+        now_ms = pygame.time.get_ticks()
+        if now_ms - self.level_started_ms >= self.boss_spawn_delay_ms:
             self.spawn_boss()
 
     def spawn_boss(self):
-        if self.boss_spawned: return
+        if self.boss_spawned:
+            return
 
-        # Keep existing enemies (do NOT despawn them)
-
-        # Spawn Boss
         boss = Boss(self.game.MAP_WIDTH, self.game.MAP_HEIGHT, "Scarab")
         self.game.enemy_list.append(boss)
 
@@ -34,23 +39,22 @@ class LevelManager:
         self.start_next_level()
 
     def start_next_level(self):
-        """Increases difficulty, heals player, and resets spawning."""
+        """Starts the next level only after boss defeat; starts a new hidden boss timer."""
         self.game.level += 1
         self.boss_spawned = False
-        
-        # 1. REWARD: Increase Max HP + Full Heal
-        self.game.player.max_hp += 2
-        self.game.player.hp = self.game.player.max_hp
-        
-        # 2. DIFFICULTY: Increase enemy count & kill requirement
+
+        # New hidden timer for the NEXT boss
+        self.level_started_ms = pygame.time.get_ticks()
+
+        # Difficulty ramp: more enemies each level
         self.game.enemy_count += 3
-        self.game.kills = 0
-        self.boss_spawn_kills = int(self.boss_spawn_kills * 1.5)
-        
-        # 3. RESPAWN: Spawn new batch of enemies
+
+        # Keep player HP and kills (per your previous request)
+
+        # Spawn new batch of enemies
         self.game.enemy_list = [
-            Enemy(self.game.MAP_WIDTH, self.game.MAP_HEIGHT, self.game.ENEMY_SIZE, "Scarab") 
+            Enemy(self.game.MAP_WIDTH, self.game.MAP_HEIGHT, self.game.ENEMY_SIZE, "Scarab")
             for _ in range(self.game.enemy_count)
         ]
-        
+
         print(f"--- LEVEL {self.game.level} STARTED ---")
