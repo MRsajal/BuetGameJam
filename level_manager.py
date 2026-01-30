@@ -28,7 +28,7 @@ class LevelManager:
         if self.boss_spawned:
             return
 
-        boss = Boss(self.game.MAP_WIDTH, self.game.MAP_HEIGHT, "Scarab")
+        boss = Boss(self.game.MAP_WIDTH, self.game.MAP_HEIGHT, "Spider")
         self.game.enemy_list.append(boss)
 
         self.boss_spawned = True
