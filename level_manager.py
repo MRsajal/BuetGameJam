@@ -9,7 +9,7 @@ class LevelManager:
 
         # Hidden per-level boss timer
         self.level_started_ms = pygame.time.get_ticks()
-        self.boss_spawn_delay_ms = 60_000  # 1 minute
+        self.boss_spawn_delay_ms = 30_000  # 30 seconds
 
     def reset(self):
         self.boss_spawned = False
